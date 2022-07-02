@@ -15,9 +15,11 @@ obtscles_pos: [[-1.5,-0.9,0.2],[2,3.2,0.5],[1.0,1.7,0.2]]
 obtscles_r: [0.2, 0.2, 0.2]
 
 # obtscles_pos: [[0,0,0]]
-# obtscles_r: [2.2]
+# obtscles_r: [0.1]
 
 
+# obtscles_pos: []
+# obtscles_r: []
 
 
 

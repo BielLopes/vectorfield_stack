@@ -39,7 +39,7 @@ class drone_node(object):
         self.obtscles_r = []
 
         # Coppelia config params
-        self.coppelia_const_velocity = -0.05
+        self.coppelia_const_velocity = -1
         self.sim = None
         try : 
             self.sim = zmqRemoteApi.RemoteAPIClient().getObject('sim')
@@ -51,8 +51,8 @@ class drone_node(object):
         self.quadcopter = self.sim.getObject('/Quadcopter')
 
         # publishers
-        self.pub_pose = None
-        self.pub_odom = None
+        # self.pub_pose = None
+        # self.pub_odom = None
         # self.pub_rviz_robot = None
         # self.pub_rviz_obst = None
 
@@ -186,10 +186,6 @@ class drone_node(object):
             vel_w = np.matrix(R_bw)*(np.matrix(vel_b).transpose())
             vel_w = vel_w.transpose().tolist()[0]
 
-            velocity_x = vel_w[0] * self.coppelia_const_velocity
-            velocity_y = vel_w[1] * self.coppelia_const_velocity
-            velocity_z = vel_w[2] * self.coppelia_const_velocity
-
 
 
             omega_b = [self.omega[0], self.omega[1], self.omega[2]]
@@ -264,118 +260,142 @@ class drone_node(object):
             self.state[8] = self.state[8] + acc[1]*time_step
             self.state[9] = self.state[9] + acc[2]*time_step
 
+            velocity_x = self.state[7] * self.coppelia_const_velocity
+            velocity_y = self.state[8] * self.coppelia_const_velocity
+            velocity_z = self.state[9] * self.coppelia_const_velocity
 
-            position = self.sim.getObjectPosition(self.quadcopter, -1)
-            orientation = self.sim.getObjectOrientation(self.quadcopter, -1)
-            orientation.append(sqrt(orientation[0]**2 + orientation[1]**2 + orientation[2]**2))
+
+            # position = self.sim.getObjectPosition(self.quadcopter, -1)
+            # orientation = self.sim.getObjectOrientation(self.quadcopter, -1)
+            # orientation.append(sqrt(orientation[0]**2 + orientation[1]**2 + orientation[2]**2))
             
-            self.state[0] = position[0]
-            self.state[1] = position[1]
-            self.state[2] = position[2]
+            # self.state[0] = position[0]
+            # self.state[1] = position[1]
+            # self.state[2] = position[2]
 
-            self.state[3] = orientation[3]
-            self.state[4] = orientation[0]
-            self.state[5] = orientation[1]
-            self.state[6] = orientation[2]
+            # self.state[3] = orientation[3]
+            # self.state[4] = orientation[0]
+            # self.state[5] = orientation[1]
+            # self.state[6] = orientation[2]
 
 
             #Publis robots pose
-            pose_msg.position.x = self.state[0]
-            pose_msg.position.y = self.state[1]
-            pose_msg.position.z = self.state[2]
-            pose_msg.orientation.x = self.state[4]
-            pose_msg.orientation.y = self.state[5]
-            pose_msg.orientation.z = self.state[6]
-            pose_msg.orientation.w = self.state[3]
+            # pose_msg.position.x = self.state[0]
+            # pose_msg.position.y = self.state[1]
+            # pose_msg.position.z = self.state[2]
+            # pose_msg.orientation.x = self.state[4]
+            # pose_msg.orientation.y = self.state[5]
+            # pose_msg.orientation.z = self.state[6]
+            # pose_msg.orientation.w = self.state[3]
             
-            self.pub_pose.publish(pose_msg)
+            # self.pub_pose.publish(pose_msg)
 
 
 
             #Publish robots odomtry (with velocity)
-            odom_msg.header.stamp = rospy.Time.now()
-            odom_msg.header.frame_id = "drone"
-            odom_msg.child_frame_id = "world"
-            odom_msg.pose.pose.position.x = self.state[0]
-            odom_msg.pose.pose.position.y = self.state[1]
-            odom_msg.pose.pose.position.z = self.state[2]
-            odom_msg.pose.pose.orientation.x = self.state[4]
-            odom_msg.pose.pose.orientation.y = self.state[5]
-            odom_msg.pose.pose.orientation.z = self.state[6]
-            odom_msg.pose.pose.orientation.w = self.state[3]
+            # odom_msg.header.stamp = rospy.Time.now()
+            # odom_msg.header.frame_id = "drone"
+            # odom_msg.child_frame_id = "world"
+            # odom_msg.pose.pose.position.x = self.state[0]
+            # odom_msg.pose.pose.position.y = self.state[1]
+            # odom_msg.pose.pose.position.z = self.state[2]
+            # odom_msg.pose.pose.orientation.x = self.state[4]
+            # odom_msg.pose.pose.orientation.y = self.state[5]
+            # odom_msg.pose.pose.orientation.z = self.state[6]
+            # odom_msg.pose.pose.orientation.w = self.state[3]
 
-            odom_msg.twist.twist.linear.x = self.state[7]
-            odom_msg.twist.twist.linear.y = self.state[8]
-            odom_msg.twist.twist.linear.z = self.state[9]
-            odom_msg.twist.twist.angular.x = self.omega[0]
-            odom_msg.twist.twist.angular.y = self.omega[1]
-            odom_msg.twist.twist.angular.z = self.omega[2]
+            # odom_msg.twist.twist.linear.x = self.state[7]
+            # odom_msg.twist.twist.linear.y = self.state[8]
+            # odom_msg.twist.twist.linear.z = self.state[9]
+            # odom_msg.twist.twist.angular.x = self.omega[0]
+            # odom_msg.twist.twist.angular.y = self.omega[1]
+            # odom_msg.twist.twist.angular.z = self.omega[2]
             
-            self.pub_odom.publish(odom_msg)
+            # self.pub_odom.publish(odom_msg)
 
 
 
-            count2 = count2 + 1
-            if (count2 == 4):
-                count2 = 0
+            # count2 = count2 + 1
+            # if (count2 == 4):
+            #     count2 = 0
 
-                #Compute closest point - with respect to the world frame
-                n_obst = min([len(self.obtscles_r), len(self.obtscles_pos)])
-                D_close = float("inf")
-                o_close = 0
-                for o in range(n_obst):
-                    Dvec = [self.state[0]-self.obtscles_pos[o][0], self.state[1]-self.obtscles_pos[o][1], self.state[2]-self.obtscles_pos[o][2]]
-                    D = sqrt(Dvec[0]**2 + Dvec[1]**2 + Dvec[2]**2) - self.obtscles_r[o]
-                    if (D<D_close):
-                        o_close = o
-                        D_close = D
+            #     #Compute closest point - with respect to the world frame
+            #     n_obst = min([len(self.obtscles_r), len(self.obtscles_pos)])
+            #     D_close = float("inf")
+            #     o_close = 0
+            #     for o in range(n_obst):
+            #         Dvec = [self.state[0]-self.obtscles_pos[o][0], self.state[1]-self.obtscles_pos[o][1], self.state[2]-self.obtscles_pos[o][2]]
+            #         D = sqrt(Dvec[0]**2 + Dvec[1]**2 + Dvec[2]**2) - self.obtscles_r[o]
+            #         if (D<D_close):
+            #             o_close = o
+            #             D_close = D
 
-                # Publish vector
-                D_vec_close = [self.obtscles_pos[o_close][0]-self.state[0], self.obtscles_pos[o_close][1]-self.state[1], self.obtscles_pos[o_close][2]-self.state[2]]
-                D = sqrt(D_vec_close[0]**2 + D_vec_close[1]**2 + D_vec_close[2]**2)
-                D_hat = [D_vec_close[0]/(D+1e-8), D_vec_close[1]/(D+1e-8), D_vec_close[2]/(D+1e-8)]
-                D = D - self.obtscles_r[o_close]
-                # D_vec_close = [D_hat[0]*D, D_hat[1]*D, D_hat[2]*D]
-                if D>0:
-                    D_vec_close = [D_vec_close[0]-D_hat[0]*self.obtscles_r[o_close], D_vec_close[1]-D_hat[1]*self.obtscles_r[o_close], D_vec_close[2]-D_hat[2]*self.obtscles_r[o_close]]
-                    close_point_world = [self.state[0] + D_hat[0]*D, self.state[1] + D_hat[1]*D, self.state[2] + D_hat[2]*D]
-                else:
-                    D_vec_close = [0.0,0.0,0.0]
-                    close_point_world = [self.state[0], self.state[1], self.state[2]]
+            #     # Publish vector
+            #     D_vec_close = [self.obtscles_pos[o_close][0]-self.state[0], self.obtscles_pos[o_close][1]-self.state[1], self.obtscles_pos[o_close][2]-self.state[2]]
+            #     D = sqrt(D_vec_close[0]**2 + D_vec_close[1]**2 + D_vec_close[2]**2)
+            #     D_hat = [D_vec_close[0]/(D+1e-8), D_vec_close[1]/(D+1e-8), D_vec_close[2]/(D+1e-8)]
+            #     D = D - self.obtscles_r[o_close]
+            #     # D_vec_close = [D_hat[0]*D, D_hat[1]*D, D_hat[2]*D]
+            #     if D>0:
+            #         D_vec_close = [D_vec_close[0]-D_hat[0]*self.obtscles_r[o_close], D_vec_close[1]-D_hat[1]*self.obtscles_r[o_close], D_vec_close[2]-D_hat[2]*self.obtscles_r[o_close]]
+            #         close_point_world = [self.state[0] + D_hat[0]*D, self.state[1] + D_hat[1]*D, self.state[2] + D_hat[2]*D]
+            #     else:
+            #         D_vec_close = [0.0,0.0,0.0]
+            #         close_point_world = [self.state[0], self.state[1], self.state[2]]
 
-                # # Publish vector
-                # point_msg.x = D_vec_close[0]
-                # point_msg.y = D_vec_close[1]
-                # point_msg.z = 0.0
-                # Publish point
-                point_msg.x = close_point_world[0]
-                point_msg.y = close_point_world[1]
-                point_msg.z = close_point_world[2]
-                self.pub_closest_world.publish(point_msg)
+            #     # # Publish vector
+            #     # point_msg.x = D_vec_close[0]
+            #     # point_msg.y = D_vec_close[1]
+            #     # point_msg.z = 0.0
+            #     # Publish point
+            #     point_msg.x = close_point_world[0]
+            #     point_msg.y = close_point_world[1]
+            #     point_msg.z = close_point_world[2]
+            #     self.pub_closest_world.publish(point_msg)
 
 
-                #Compute closest point - with respect to the robots frame
+            #     #Compute closest point - with respect to the robots frame
 
-                p_cw = [[close_point_world[0]],[close_point_world[1]],[close_point_world[2]],[1]]
-                # print("a")
-                H_bw = self.quat2rotm(quat_bw)
-                # print("b")
-                H_bw[0].append(pos[0])
-                H_bw[1].append(pos[1])
-                H_bw[2].append(pos[2])
-                H_bw.append([0,0,0,1])
-                H_bw = np.matrix(H_bw)
-                p_cb = H_bw**(-1)*p_cw
+            #     p_cw = [[close_point_world[0]],[close_point_world[1]],[close_point_world[2]],[1]]
+            #     # print("a")
+            #     H_bw = self.quat2rotm(quat_bw)
+            #     # print("b")
+            #     H_bw[0].append(pos[0])
+            #     H_bw[1].append(pos[1])
+            #     H_bw[2].append(pos[2])
+            #     H_bw.append([0,0,0,1])
+            #     H_bw = np.matrix(H_bw)
+            #     p_cb = H_bw**(-1)*p_cw
 
-                point_msg2.x = p_cb[0,0]
-                point_msg2.y = p_cb[1,0]
-                point_msg2.z = p_cb[2,0]
-                self.pub_closest_body.publish(point_msg2)
-                # print ("\33[95mp_cb = [%f, %f]\33[0m" % (point_msg2.x, point_msg2.y))
+            #     point_msg2.x = p_cb[0,0]
+            #     point_msg2.y = p_cb[1,0]
+            #     point_msg2.z = p_cb[2,0]
+            #     self.pub_closest_body.publish(point_msg2)
+            #     # print ("\33[95mp_cb = [%f, %f]\33[0m" % (point_msg2.x, point_msg2.y))
+
+
+            position = self.sim.getObjectPosition(self.quadcopter, -1)
+            orientation = self.sim.getObjectOrientation(self.quadcopter, -1)
+
+            #Publish robots odomtry (with velocity)
+            # odom_msg.header.stamp = rospy.Time.now()
+            # odom_msg.header.frame_id = "drone"
+            # odom_msg.child_frame_id = "world"
+            # odom_msg.pose.pose.position.x = self.state[0]
+            # odom_msg.pose.pose.position.y = self.state[1]
+            # odom_msg.pose.pose.position.z = self.state[2]
+            # odom_msg.pose.pose.orientation.x = self.state[4]
+            # odom_msg.pose.pose.orientation.y = self.state[5]
+            # odom_msg.pose.pose.orientation.z = self.state[6]
+            # odom_msg.pose.pose.orientation.w = self.state[3]
+
+            print(self.state[7:])
+
+            # euler_from_quaternion(self.omega)
 
 
             self.sim.setObjectPosition(self.base,-1, [position[0] + velocity_x, position[1] + velocity_y, position[2] + velocity_z])
-            self.sim.setObjectOrientation(self.base,-1, [position[0] + self.omega[0], position[1] + self.omega[1], position[2] + + self.omega[2]])
+            # self.sim.setObjectOrientation(self.base,-1, [position[0] + self.omega[0], position[1] + self.omega[1], position[2] + self.omega[2]])
             rate.sleep()
 
 
@@ -409,10 +429,10 @@ class drone_node(object):
         print("self.robot_m: ", self.robot_m)
 
         # publishers
-        self.pub_pose = rospy.Publisher("/drone/pose", Pose, queue_size=1)
-        self.pub_odom = rospy.Publisher("/drone/odom", Odometry, queue_size=1)
-        self.pub_closest_world = rospy.Publisher("/drone/closest_point_world", Point, queue_size=1)
-        self.pub_closest_body = rospy.Publisher("/drone/closest_point_body", Point, queue_size=1)
+        # self.pub_pose = rospy.Publisher("/drone/pose", Pose, queue_size=1)
+        self.pub_odom = rospy.Publisher("/odometria_test", Odometry, queue_size=1)
+        # self.pub_closest_world = rospy.Publisher("/drone/closest_point_world", Point, queue_size=1)
+        # self.pub_closest_body = rospy.Publisher("/drone/closest_point_body", Point, queue_size=1)
         # self.pub_rviz_robot = rospy.Publisher("/drone/robot", MarkerArray, queue_size=1)
         # self.pub_rviz_closest = rospy.Publisher("/drone/closest_marker", Marker, queue_size=1)
         # self.pub_rviz_obst = rospy.Publisher("/drone/obstacles", MarkerArray, queue_size=1)
@@ -424,6 +444,8 @@ class drone_node(object):
         # subscribers
         rospy.Subscriber("/drone/acrorate", Quaternion, self.callback_acrorate)
 
+        rospy.Subscriber("/drone/pose", Pose, self.callback_pose)
+
 
 
 
@@ -433,6 +455,18 @@ class drone_node(object):
         """
         self.tau = data.w
         self.omega = [data.x, data.y, data.z]
+    
+    def callback_pose(self, data):
+        """Callback to get the reference velocity for the robot
+        :param data: pose ROS message
+        """
+        self.state[0] = data.position.x
+        self.state[1] = data.position.y
+        self.state[2] = data.position.z
+        self.state[4] = data.orientation.x
+        self.state[5] = data.orientation.y
+        self.state[6] = data.orientation.z
+        self.state[3] = data.orientation.w
 
 
 

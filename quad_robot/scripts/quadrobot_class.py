@@ -67,7 +67,7 @@ class quadrobot_class():
 
         J = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
 
-        delta = 0.0001;
+        delta = 0.1
 
         px = [pos[0]+delta,pos[1],pos[2]];
         py = [pos[0],pos[1]+delta,pos[2]];
