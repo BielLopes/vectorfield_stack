@@ -4,12 +4,12 @@
 
 
 import rospy
-from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import Twist, Pose, Point, Quaternion
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from tf2_msgs.msg import TFMessage
-from visualization_msgs.msg import Marker, MarkerArray
+
+from pyquaternion import Quaternion as Quaternion_lib
 from math import cos, sin, sqrt, pi
 import numpy as np
 import zmqRemoteApi
@@ -28,6 +28,10 @@ class drone_node(object):
 
         self.freq = 100.0  # Frequency to simulate the simple drone robot
 
+        # Rotation Quaternions
+        self.orientation_a = Quaternion_lib([1, 0, 0, 0])
+        self.orientation_d = Quaternion_lib([1, 0, 0, 0])
+
         # self.vel = [0.0, 0.0] #vx and wz
         self.tau = 9.81
         self.omega = [0.0, 0.0, 0.0]
@@ -39,7 +43,7 @@ class drone_node(object):
         self.obtscles_r = []
 
         # Coppelia config params
-        self.coppelia_const_velocity = -1
+        self.coppelia_const_velocity = 0.1
         self.sim = None
         try : 
             self.sim = zmqRemoteApi.RemoteAPIClient().getObject('sim')
@@ -225,12 +229,13 @@ class drone_node(object):
 
             tau_vec = [0, 0, self.robot_m*self.tau]
 
-
+            # print(g_vec_body)
             acc = [0, 0, 0]
             acc[0] = tau_vec[0]/self.robot_m - g_vec_body[0] + F_drag[0]/self.robot_m
             acc[1] = tau_vec[1]/self.robot_m - g_vec_body[1] + F_drag[1]/self.robot_m
             acc[2] = tau_vec[2]/self.robot_m - g_vec_body[2] + F_drag[2]/self.robot_m
 
+            # print(acc)
 
 
 
@@ -375,7 +380,6 @@ class drone_node(object):
 
 
             position = self.sim.getObjectPosition(self.quadcopter, -1)
-            orientation = self.sim.getObjectOrientation(self.quadcopter, -1)
 
             #Publish robots odomtry (with velocity)
             # odom_msg.header.stamp = rospy.Time.now()
@@ -388,14 +392,25 @@ class drone_node(object):
             # odom_msg.pose.pose.orientation.y = self.state[5]
             # odom_msg.pose.pose.orientation.z = self.state[6]
             # odom_msg.pose.pose.orientation.w = self.state[3]
-
-            print(self.state[7:])
-
-            # euler_from_quaternion(self.omega)
-
-
+            print((velocity_x, velocity_y, velocity_z))
             self.sim.setObjectPosition(self.base,-1, [position[0] + velocity_x, position[1] + velocity_y, position[2] + velocity_z])
-            # self.sim.setObjectOrientation(self.base,-1, [position[0] + self.omega[0], position[1] + self.omega[1], position[2] + self.omega[2]])
+
+            # (yaw_a, pitch_a, roll_a) = self.orientation_a.yaw_pitch_roll
+            # orientation_error = self.orientation_d * self.orientation_a.inverse
+            # (yaw, pitch, roll) = orientation_error.yaw_pitch_roll
+            # print(yaw)
+            # self.sim.setObjectOrientation(self.base,-1, [roll_a + roll, pitch_a + pitch, yaw_a + yaw])
+            # yaw_a_desired = yaw_a + yaw
+            # self.sim.setObjectOrientation(self.base,-1, [roll_a, pitch_a, yaw_a + yaw])
+
+            # while abs(yaw_a_desired - yaw_a) > 0.001:
+            #     (yaw_a, pitch_a, roll_a) = self.orientation_a.yaw_pitch_roll
+            #     rate.sleep()
+            
+            # print("Acabei a Rotação anterior!")
+
+
+            # print((yaw, pitch, roll))
             rate.sleep()
 
 
@@ -455,6 +470,8 @@ class drone_node(object):
         """
         self.tau = data.w
         self.omega = [data.x, data.y, data.z]
+
+        self.orientation_d = Quaternion_lib([data.w, data.x, data.y, data.z])
     
     def callback_pose(self, data):
         """Callback to get the reference velocity for the robot
@@ -467,6 +484,8 @@ class drone_node(object):
         self.state[5] = data.orientation.y
         self.state[6] = data.orientation.z
         self.state[3] = data.orientation.w
+
+        self.orientation_a = Quaternion_lib([data.orientation.w, data.orientation.x, data.orientation.y, data.orientation.z])
 
 
 

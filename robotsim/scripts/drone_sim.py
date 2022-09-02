@@ -43,6 +43,7 @@ class drone_node(object):
         self.pub_odom = None
         self.pub_rviz_robot = None
         self.pub_rviz_obst = None
+        self.vel_pub = None
 
 
 
@@ -386,6 +387,12 @@ class drone_node(object):
             
             self.pub_odom.publish(odom_msg)
 
+            # Publish velocity
+            vel_message = Point()
+            vel_message.x = vel_w[0]
+            vel_message.y = vel_w[1]
+            vel_message.z = vel_w[2]
+            self.vel_pub.publish(vel_message)
 
 
             count2 = count2 + 1
@@ -882,6 +889,8 @@ class drone_node(object):
         self.pub_rviz_obst = rospy.Publisher("/drone/obstacles", MarkerArray, queue_size=1)
         self.pub_rviz_hist = rospy.Publisher("/drone/history", MarkerArray, queue_size=1)
 
+        # Vel Publisher
+        self.vel_pub = rospy.Publisher("/stack/vel", Point, queue_size=1)
 
         # self.pub_rviz_robot_w1 = rospy.Publisher("/drone/robot_w1", Marker, queue_size=1)
 

@@ -285,7 +285,7 @@ class quadrobot_class():
 
 
         if(self.tau<0):
-            a = 1/0
+            a = 1/0.00000000000000001
 
 
         #end
@@ -416,7 +416,7 @@ class quadrobot_class():
 
 
         if(self.tau<0):
-            a = 1/0
+            a = 1/0.00000000000000001
 
         #end
 
