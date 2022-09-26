@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!--Run the node that will generate an example path-->
+    <node pkg = "robotsim" name = "coppelia_robot_teleop" type = "coppelia_drone_sim_teleop_cave.py" args="" output="screen">
+        <rosparam command="load" file="$(find robotsim)/config/drone_sim.yaml" />
+    </node>
+
+
+    <!-- Run the node that controls the robot with vector fields -->
+    <node pkg="quad_robot" name="quad_node" type="quad_node_alt.py" args="" output="screen">
+        <rosparam command="load" file="$(find quad_robot)/config/quad_params.yaml" />
+    </node>
+
+    <node pkg="joy" name="joy_node" type="joy_node" args="" output="screen" />
+
+    <node pkg="robotsim" name="tf_broadcaster" type="transform_teleop_drone.py" args="" output="screen" />
+
+
+</launch>
+
+

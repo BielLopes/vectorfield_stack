@@ -14,11 +14,14 @@ from math import cos, sin, sqrt, atan2
 import numpy as np
 
 
-import timez
+import time
+
+# from distancefield.import_me_if_you_can import say_it_works
 
 
 from distancefield.msg import Path, PathEq
-import quadrobot_class
+import quadrobot_class_alt
+# import distancefield.distancefield_class
 
 
 class quad_node(object):
@@ -68,7 +71,7 @@ class quad_node(object):
         self.init_node()
 
         # distance field controller
-        self.quad_robot_obj = quadrobot_class.quadrobot_class(self.vr, self.kf, self.reverse_direction, self.flag_follow_obstacle, self.epsilon, self.switch_dist_0, self.switch_dist, self.m, self.kv, self.kw)
+        self.quad_robot_obj = quadrobot_class_alt.quadrobot_class(self.vr, self.kf, self.reverse_direction, self.flag_follow_obstacle, self.epsilon, self.switch_dist_0, self.switch_dist, self.m, self.kv, self.kw)
 
 
 
@@ -90,33 +93,33 @@ class quad_node(object):
 
             self.quad_robot_obj.set_state(self.state)
             
+            ##################################################
+            ############## VECTOR FIELD THINGS ###############
+            ##################################################
+            # if self.quad_robot_obj.vec_field_obj.is_ready():
 
-            if self.quad_robot_obj.vec_field_obj.is_ready():
+            #     if(self.flag_follow_obstacle):
+            #         self.quad_robot_obj.vec_field_obj.set_closest(self.closest_world)
 
-                if(self.flag_follow_obstacle):
-                    self.quad_robot_obj.vec_field_obj.set_closest(self.closest_world)
+            self.quad_robot_obj.control_step()
+            [tau, omega] = self.quad_robot_obj.get_acrorate()
 
-                # self.quad_robot_obj.control_step()
-                # self.quad_robot_obj.control_step_parallel()
-                self.quad_robot_obj.control_step()
-                [tau, omega] = self.quad_robot_obj.get_acrorate()
+            acrorate_msg.w = tau
+            acrorate_msg.x = omega[0]
+            acrorate_msg.y = omega[1]
+            acrorate_msg.z = omega[2]
+            self.pub_acrorate.publish(acrorate_msg)
 
-                acrorate_msg.w = tau
-                acrorate_msg.x = omega[0]
-                acrorate_msg.y = omega[1]
-                acrorate_msg.z = omega[2]
-                self.pub_acrorate.publish(acrorate_msg)
+            # [vr,vl] = self.quad_robot_obj.get_wheels_skidsteer(self.a, self.b)
+            # wheels_msg.data = [vr,vr,vl,vl]
+            # self.pub_cmd_wheels.publish(wheels_msg)
 
-                # [vr,vl] = self.quad_robot_obj.get_wheels_skidsteer(self.a, self.b)
-                # wheels_msg.data = [vr,vr,vl,vl]
-                # self.pub_cmd_wheels.publish(wheels_msg)
+            ##################################################
+            ############## VECTOR FIELD THINGS ###############
+            ##################################################
+            # else:
+            #     rospy.loginfo_once("\33[93mWaiting path message\33[0m")
 
-            else:
-                rospy.loginfo_once("\33[93mWaiting path message\33[0m")
-
-
-            # self.pub_cmd_vel.publish(vel)
-            # rviz_helper.send_marker_to_rviz(Vx_ref, Vy_ref, self.pos, self.pub_rviz_ref)
 
             rate.sleep()
 
@@ -155,9 +158,11 @@ class quad_node(object):
         # self.pub_rviz_ref = rospy.Publisher("/visualization_ref_vel", Marker, queue_size=1)
         # self.pub_rviz_curve = rospy.Publisher("/visualization_path", MarkerArray, queue_size=1)
 
-        # # subscribers
-        rospy.Subscriber(self.path_topic_name, Path, self.callback_path)
-        rospy.Subscriber(self.path_equation_topic_name, PathEq, self.callback_path_equation)
+        ##################################################
+        ############## VECTOR FIELD THINGS ###############
+        ##################################################
+        # rospy.Subscriber(self.path_topic_name, Path, self.callback_path)
+        # rospy.Subscriber(self.path_equation_topic_name, PathEq, self.callback_path_equation)
 
         if(self.flag_follow_obstacle):
             # rospy.Subscriber(self.obstacle_point_topic_name, Point, self.callback_closest_body)
@@ -204,31 +209,33 @@ class quad_node(object):
         self.closest_world = [self.closest[0], self.closest[1], self.closest[2]]
 
 
+    ##################################################
+    ############## VECTOR FIELD THINGS ###############
+    ##################################################
+    # def callback_path(self, data):
+    #     """Callback to obtain the path to be followed by the robot
+    #     :param data: path ROS message
+    #     """
 
-    def callback_path(self, data):
-        """Callback to obtain the path to be followed by the robot
-        :param data: path ROS message
-        """
+    #     path_points = []
+    #     for k in range(len(data.path.points)):
+    #         p = data.path.points[k]
+    #         path_points.append((p.x, p.y, p.z))
 
-        path_points = []
-        for k in range(len(data.path.points)):
-            p = data.path.points[k]
-            path_points.append((p.x, p.y, p.z))
+    #     rospy.loginfo("New path received (%d points) is closed?:%s", len(path_points), data.closed_path_flag)
 
-        rospy.loginfo("New path received (%d points) is closed?:%s", len(path_points), data.closed_path_flag)
-
-        self.quad_robot_obj.vec_field_obj.set_path(path_points, data.insert_n_points, data.filter_path_n_average,data.closed_path_flag)
+    #     self.quad_robot_obj.vec_field_obj.set_path(path_points, data.insert_n_points, data.filter_path_n_average,data.closed_path_flag)
 
 
 
-    def callback_path_equation(self, data):
-        """Callback to obtain the path to be followed by the robot
-        :param data: path ROS message
-        """
+    # def callback_path_equation(self, data):
+    #     """Callback to obtain the path to be followed by the robot
+    #     :param data: path ROS message
+    #     """
 
-        rospy.loginfo("New path received (equation) is closed?:%s", data.closed_path_flag)
+    #     rospy.loginfo("New path received (equation) is closed?:%s", data.closed_path_flag)
 
-        self.quad_robot_obj.vec_field_obj.set_equation(data.equation, data.u_i, data.u_f, data.closed_path_flag, 200)
+    #     self.quad_robot_obj.vec_field_obj.set_equation(data.equation, data.u_i, data.u_f, data.closed_path_flag, 200)
 
 
 

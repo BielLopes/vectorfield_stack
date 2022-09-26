@@ -14,25 +14,25 @@ from pyquaternion import Quaternion as Quaternion_lib
 from ros_numpy.point_cloud2 import pointcloud2_to_array
 from math import cos, inf, sin, sqrt, pi
 import numpy as np
-from numba import njit
+# from numba import njit
 #import scipy as sp
 #import scipy.spatial
 
 
-@njit
-def calc_minor_point(cloud, x_a, y_a, z_a):
-    x_m, y_m, z_m = 0, 0, 0
-    minor_distance = inf
+# @njit
+# def calc_minor_point(cloud, x_a, y_a, z_a):
+#     x_m, y_m, z_m = 0, 0, 0
+#     minor_distance = inf
 
-    for point in cloud:
-        x, y, z = point[0], point[1], point[2]
-        distance = sqrt((x - x_a)**2 + (y - y_a)**2 + (z - z_a)**2)
+#     for point in cloud:
+#         x, y, z = point[0], point[1], point[2]
+#         distance = sqrt((x - x_a)**2 + (y - y_a)**2 + (z - z_a)**2)
     
-        if distance < minor_distance:
-            minor_distance = distance
-            x_m, y_m, z_m = x, y, z
+#         if distance < minor_distance:
+#             minor_distance = distance
+#             x_m, y_m, z_m = x, y, z
     
-    return [x_m, y_m, z_m]
+#     return [x_m, y_m, z_m]
 
 
 class drone_node(object):
@@ -63,8 +63,9 @@ class drone_node(object):
         self.state =  [0.0, 0.0, 0.0] #x, y, psi
         self.robot_radius =  0.1
 
-        self.obtscles_pos = []
-        self.obtscles_r = []
+        # self.obtscles_pos = []
+        # self.obtscles_r = []
+        self.iterator_seq = 0
 
         self.minor_point = [0, 0, 0]
 
@@ -396,6 +397,8 @@ class drone_node(object):
 
             #Publis robots odomtry (with velocity)
             odom_msg.header.stamp = rospy.Time.now()
+            odom_msg.header.seq = self.iterator_seq
+            self.iterator_seq += 1
             odom_msg.header.frame_id = "drone"
             odom_msg.child_frame_id = "world"
             odom_msg.pose.pose.position.x = self.state[0]
@@ -430,69 +433,69 @@ class drone_node(object):
             self.sim.setObjectPosition(self.drone,-1, [self.state[0], self.state[1], self.state[2]])
             self.sim.setObjectOrientation(self.drone,-1, [roll, pitch, yaw])
 
-            count2 = count2 + 1
-            if (count2 == 4):
-                count2 = 0
+            # count2 = count2 + 1
+            # if (count2 == 4):
+            #     count2 = 0
 
-                #Compute closest point - with respect to the world frame
-                n_obst = min([len(self.obtscles_r), len(self.obtscles_pos)])
-                D_close = float("inf")
-                o_close = 0
-                for o in range(n_obst):
-                    Dvec = [self.state[0]-self.obtscles_pos[o][0], self.state[1]-self.obtscles_pos[o][1], self.state[2]-self.obtscles_pos[o][2]]
-                    D = sqrt(Dvec[0]**2 + Dvec[1]**2 + Dvec[2]**2) - self.obtscles_r[o]
-                    if (D<D_close):
-                        o_close = o
-                        D_close = D
+            #     #Compute closest point - with respect to the world frame
+            #     n_obst = min([len(self.obtscles_r), len(self.obtscles_pos)])
+            #     D_close = float("inf")
+            #     o_close = 0
+            #     for o in range(n_obst):
+            #         Dvec = [self.state[0]-self.obtscles_pos[o][0], self.state[1]-self.obtscles_pos[o][1], self.state[2]-self.obtscles_pos[o][2]]
+            #         D = sqrt(Dvec[0]**2 + Dvec[1]**2 + Dvec[2]**2) - self.obtscles_r[o]
+            #         if (D<D_close):
+            #             o_close = o
+            #             D_close = D
 
-                # Publish vector
-                D_vec_close = [self.obtscles_pos[o_close][0]-self.state[0], self.obtscles_pos[o_close][1]-self.state[1], self.obtscles_pos[o_close][2]-self.state[2]]
-                D = sqrt(D_vec_close[0]**2 + D_vec_close[1]**2 + D_vec_close[2]**2)
-                D_hat = [D_vec_close[0]/(D+1e-8), D_vec_close[1]/(D+1e-8), D_vec_close[2]/(D+1e-8)]
-                D = D - self.obtscles_r[o_close]
-                # D_vec_close = [D_hat[0]*D, D_hat[1]*D, D_hat[2]*D]
-                if D>0:
-                    D_vec_close = [D_vec_close[0]-D_hat[0]*self.obtscles_r[o_close], D_vec_close[1]-D_hat[1]*self.obtscles_r[o_close], D_vec_close[2]-D_hat[2]*self.obtscles_r[o_close]]
-                    close_point_world = [self.state[0] + D_hat[0]*D, self.state[1] + D_hat[1]*D, self.state[2] + D_hat[2]*D]
-                else:
-                    D_vec_close = [0.0,0.0,0.0]
-                    close_point_world = [self.state[0], self.state[1], self.state[2]]
+            #     # Publish vector
+            #     D_vec_close = [self.obtscles_pos[o_close][0]-self.state[0], self.obtscles_pos[o_close][1]-self.state[1], self.obtscles_pos[o_close][2]-self.state[2]]
+            #     D = sqrt(D_vec_close[0]**2 + D_vec_close[1]**2 + D_vec_close[2]**2)
+            #     D_hat = [D_vec_close[0]/(D+1e-8), D_vec_close[1]/(D+1e-8), D_vec_close[2]/(D+1e-8)]
+            #     D = D - self.obtscles_r[o_close]
+            #     # D_vec_close = [D_hat[0]*D, D_hat[1]*D, D_hat[2]*D]
+            #     if D>0:
+            #         D_vec_close = [D_vec_close[0]-D_hat[0]*self.obtscles_r[o_close], D_vec_close[1]-D_hat[1]*self.obtscles_r[o_close], D_vec_close[2]-D_hat[2]*self.obtscles_r[o_close]]
+            #         close_point_world = [self.state[0] + D_hat[0]*D, self.state[1] + D_hat[1]*D, self.state[2] + D_hat[2]*D]
+            #     else:
+            #         D_vec_close = [0.0,0.0,0.0]
+            #         close_point_world = [self.state[0], self.state[1], self.state[2]]
 
 
 
-                # # Publish vector
-                # point_msg.x = D_vec_close[0]
-                # point_msg.y = D_vec_close[1]
-                # point_msg.z = 0.0
-                # Publish point
+            #     # # Publish vector
+            #     # point_msg.x = D_vec_close[0]
+            #     # point_msg.y = D_vec_close[1]
+            #     # point_msg.z = 0.0
+            #     # Publish point
 
-                # Closest point world from Cloud
-                # close_point_world = self.minor_point
+            #     # Closest point world from Cloud
+            #     # close_point_world = self.minor_point
                 
-                point_msg.x = close_point_world[0]
-                point_msg.y = close_point_world[1]
-                point_msg.z = close_point_world[2]
-                self.pub_closest_world.publish(point_msg)
+            #     point_msg.x = close_point_world[0]
+            #     point_msg.y = close_point_world[1]
+            #     point_msg.z = close_point_world[2]
+            #     self.pub_closest_world.publish(point_msg)
 
 
-                #Compute closest point - with respect to the robots frame
+            #     #Compute closest point - with respect to the robots frame
 
-                p_cw = [[close_point_world[0]],[close_point_world[1]],[close_point_world[2]],[1]]
-                # print("a")
-                H_bw = self.quat2rotm(quat_bw)
-                # print("b")
-                H_bw[0].append(pos[0])
-                H_bw[1].append(pos[1])
-                H_bw[2].append(pos[2])
-                H_bw.append([0,0,0,1])
-                H_bw = np.matrix(H_bw)
-                p_cb = H_bw**(-1)*p_cw
+            #     p_cw = [[close_point_world[0]],[close_point_world[1]],[close_point_world[2]],[1]]
+            #     # print("a")
+            #     H_bw = self.quat2rotm(quat_bw)
+            #     # print("b")
+            #     H_bw[0].append(pos[0])
+            #     H_bw[1].append(pos[1])
+            #     H_bw[2].append(pos[2])
+            #     H_bw.append([0,0,0,1])
+            #     H_bw = np.matrix(H_bw)
+            #     p_cb = H_bw**(-1)*p_cw
 
-                point_msg2.x = p_cb[0,0]
-                point_msg2.y = p_cb[1,0]
-                point_msg2.z = p_cb[2,0]
-                self.pub_closest_body.publish(point_msg2)
-                # print ("\33[95mp_cb = [%f, %f]\33[0m" % (point_msg2.x, point_msg2.y))
+            #     point_msg2.x = p_cb[0,0]
+            #     point_msg2.y = p_cb[1,0]
+            #     point_msg2.z = p_cb[2,0]
+            #     self.pub_closest_body.publish(point_msg2)
+            #     # print ("\33[95mp_cb = [%f, %f]\33[0m" % (point_msg2.x, point_msg2.y))
 
 
             rate.sleep()
@@ -503,12 +506,12 @@ class drone_node(object):
         """Initialize ROS related variables, parameters and callbacks
         :return:
         """
-        rospy.init_node("drone_sim")
+        rospy.init_node("drone_sim_teleop")
         self.sim.startSimulation()
 
 
         # parameters (description in yaml file)
-        self.state = rospy.get_param("~state_0", 1.0)
+        self.state = rospy.get_param("~state_0_cave", 1.0)
         # self.robot_radius = float(rospy.get_param("~robot_radius", 1.0))
         self.robot_arm_len = float(rospy.get_param("~robot_arm_len", 1.0))
         self.robot_m = float(rospy.get_param("~robot_m", 1.0))
@@ -517,8 +520,8 @@ class drone_node(object):
         # self.robot_a = float(rospy.get_param("~robot_a", 1.0))
         # self.robot_b = float(rospy.get_param("~robot_b", 1.0))
         # self.robot_r = float(rospy.get_param("~robot_r", 1.0))
-        self.obtscles_pos = rospy.get_param("~initial_obtscles_pos", [])
-        self.obtscles_r = rospy.get_param("~obtscles_r", [])
+        # self.obtscles_pos = rospy.get_param("~initial_obtscles_pos", [])
+        # self.obtscles_r = rospy.get_param("~obtscles_r", [])
         self.history = []
         self.history.append([self.state[0], self.state[1], self.state[2]])
 
@@ -542,8 +545,8 @@ class drone_node(object):
         # rospy.Subscriber("/cloud", PointCloud2, self.callback_cloud)
 
 
-        for i in range(len(self.obtscles_pos)):
-            rospy.Subscriber(f"/pose/obstacle_{i+1}", Pose, self.callback_obstacle, (i))
+        # for i in range(len(self.obtscles_pos)):
+        #     rospy.Subscriber(f"/pose/obstacle_{i+1}", Pose, self.callback_obstacle, (i))
 
 
     def callback_acrorate(self, data):
@@ -554,14 +557,14 @@ class drone_node(object):
         self.omega = [data.x, data.y, data.z]
 
 
-    def callback_obstacle(self, data: Pose, i):
-        self.obtscles_pos[i] = [data.position.x, data.position.y, data.position.z]
+    # def callback_obstacle(self, data: Pose, i):
+    #     self.obtscles_pos[i] = [data.position.x, data.position.y, data.position.z]
         # print(self.obtscles_pos[i])
 
-    def callback_cloud(self, ros_cloud: PointCloud2):
+    # def callback_cloud(self, ros_cloud: PointCloud2):
         
-        cloud = pointcloud2_to_array(ros_cloud)
-        self.minor_point = calc_minor_point(cloud, self.state[0], self.state[1], self.state[2])
+    #     cloud = pointcloud2_to_array(ros_cloud)
+    #     self.minor_point = calc_minor_point(cloud, self.state[0], self.state[1], self.state[2])
 
 
 
