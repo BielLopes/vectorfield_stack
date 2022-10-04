@@ -8,7 +8,7 @@ from itertools import groupby
 import numpy as np
 from math import pi, sqrt, cos, sin, tan, acos, asin, atan, atan2
 
-from threading import Thread
+from sensor_msgs.msg import Joy
 
 import distancefield
 # import distancefield_class
@@ -53,8 +53,11 @@ class quadrobot_class():
         self.D_hist = 1000 #temp
 
         #Vector field object
-        self.vec_field_obj = distancefield_class(vr, kf, reverse_direction, self.flag_follow_obstacle, self.epsilon, self.switch_dist_0, self.switch_dist)
-
+        # self.vec_field_obj = distancefield_class(vr, kf, reverse_direction, self.flag_follow_obstacle, self.epsilon, self.switch_dist_0, self.switch_dist)
+        self.vel_x = 0.0
+        self.vel_y = 0.0
+        self.vel_z = 0.0
+        rospy.Subscriber("/joy", Joy, self.joy_vel_callback)
 
 
 
@@ -73,13 +76,10 @@ class quadrobot_class():
         py = [pos[0],pos[1]+delta,pos[2]];
         pz = [pos[0],pos[1],pos[2]+delta];
 
-        Vx,Vy,Vz,flag = self.vec_field_obj.compute_field_at_p(pos)
+        Vx,Vy,Vz = self.get_joy_vel()
         f0 = [Vx,Vy,Vz]
-        Vx,Vy,Vz,flag = self.vec_field_obj.compute_field_at_p(px)
         fx = [Vx,Vy,Vz]
-        Vx,Vy,Vz,flag = self.vec_field_obj.compute_field_at_p(py)
         fy = [Vx,Vy,Vz]
-        Vx,Vy,Vz,flag = self.vec_field_obj.compute_field_at_p(pz)
         fz = [Vx,Vy,Vz]
 
 
@@ -120,7 +120,7 @@ class quadrobot_class():
     # Compute a reference acceleration
     def get_acc_ref(self, pos, vel, out=[0], id=0):
         
-        Vx, Vy, Vz, flag = self.vec_field_obj.compute_field_at_p(pos)
+        Vx, Vy, Vz = self.get_joy_vel()
         f = [Vx, Vy, Vz]
         J = self.compute_Jacobian(pos)
 
@@ -168,141 +168,14 @@ class quadrobot_class():
     # thread.join()
     # thread2.join()
 
+    def joy_vel_callback(self, data: Joy):
 
-    def control_step_parallel(self):
+        self.vel_x = data.axes[1] * 0.15
+        self.vel_y = data.axes[0] * 0.15
+        self.vel_z = data.axes[2] * 0.15
 
-        delta_t = 0.01
-
-        pos = [self.state[0], self.state[1], self.state[2]]
-        quat = [self.state[3], self.state[4], self.state[5], self.state[6]]
-        vel = [self.state[7], self.state[8], self.state[9]]
-
-
-        R = self.quat2rotm(quat)
-
-
-        z_b = [R[0][2], R[1][2], R[2][2]];
-        z_hat = [0, 0, 1];
-
-        tau_r = self.m*self.g
-
-        pos_M = [pos[0] + vel[0]*delta_t, pos[1] + vel[1]*delta_t, pos[2] + vel[2]*delta_t]
-        vel_M = [0,0,0]
-        vel_M[0] = vel[0] + (z_b[0]*tau_r/self.m - self.g*z_hat[0])*delta_t
-        vel_M[1] = vel[1] + (z_b[1]*tau_r/self.m - self.g*z_hat[1])*delta_t
-        vel_M[2] = vel[2] + (z_b[2]*tau_r/self.m - self.g*z_hat[2])*delta_t
-
-        pos_m = [pos[0] - vel[0]*delta_t, pos[1] - vel[1]*delta_t, pos[2] - vel[2]*delta_t]
-        vel_m = [0,0,0]
-        vel_m[0] = vel[0] - (z_b[0]*tau_r/self.m - self.g*z_hat[0])*delta_t
-        vel_m[1] = vel[1] - (z_b[1]*tau_r/self.m - self.g*z_hat[1])*delta_t
-        vel_m[2] = vel[2] - (z_b[2]*tau_r/self.m - self.g*z_hat[2])*delta_t
-
-
-
-        psi_r = 0
-        psi_r_M = 0
-        psi_r_m = 0
-
-
-        # Vx, Vy, Vz, flag = self.vec_field_obj.compute_field_at_p(pos)
-        # f = [Vx, Vy, Vz]
-
-
-
-        # Computation of reference orientation
-        a_r = self.get_acc_ref(pos,vel);
-        a_r_M = self.get_acc_ref(pos_M,vel_M);
-        a_r_m = self.get_acc_ref(pos_m,vel_m);
-        # a_r = [0,0,9.81]
-        # a_r_M = [0,0,9.81]
-        # a_r_m = [0,0,9.81]
-        # out_ar = [0,0,0]
-        # thread0 = Thread(target = self.get_acc_ref, args=(pos,vel,out_ar,0,))
-        # thread1 = Thread(target = self.get_acc_ref, args=(pos_M,vel_M,out_ar,1,))
-        # thread2 = Thread(target = self.get_acc_ref, args=(pos_m,vel_m,out_ar,2,))
-        # thread0.start()
-        # thread1.start()
-        # thread2.start()
-        # thread0.join()
-        # thread1.join()
-        # thread2.join()
-        # a_r = out_ar[0]
-        # a_r_M = out_ar[1]
-        # a_r_m = out_ar[2]
-        # print (out_ar)
-        # print ("")
-
-        # Matrix3d Rr, Rr_M, Rr_m;
-        Rr =  self.get_orientation_ref(a_r, psi_r);
-        Rr_M =  self.get_orientation_ref(a_r_M, psi_r_M);
-        Rr_m =  self.get_orientation_ref(a_r_m, psi_r_m);
-        # Rr = [[1,0,0],[0,1,0],[0,0,1]]
-        # Rr_M = [[1,0,0],[0,1,0],[0,0,1]]
-        # Rr_m = [[1,0,0],[0,1,0],[0,0,1]]
-
-
-
-        dot_ar_zb = a_r[0]*z_b[0] + a_r[1]*z_b[1] + a_r[2]*z_b[2]
-        self.tau = self.m*dot_ar_zb;
-
-
-        # Re = [[1,0,0],[0,1,0],[0,0,1]]
-        Re = np.matrix(R).transpose()*np.matrix(Rr);
-        Re = Re.tolist()
-
-        # Compute the time derivative of Rr
-        ####################
-        
-
-
-
-        Rr_dot = ((np.matrix(Rr_M)-np.matrix(Rr_m))/(2*delta_t)).tolist()
-
-        S_w = np.matrix(R).transpose()*np.matrix(Rr_dot)
-        S_w = S_w*(np.matrix(Re).transpose())
-        S_w = S_w.tolist()
-        ####################
-
-        omega_d = [S_w[2][1]-S_w[1][2], S_w[0][2]-S_w[2][0], S_w[1][0]-S_w[0][1]]
-        omega_d = [omega_d[0]/2.0, omega_d[1]/2.0, omega_d[2]/2.0]
-        # print ("omega_d: [%f, %f, %f]" % (omega_d[0],omega_d[1],omega_d[2]))
-        # omega_d = [0,0,0]
-
-
-        axis, alpha = self.rotm2axang(Re)
-
-
-        omega = [0,0,0]
-        omega[0] = omega_d[0] + self.kw*sin(alpha)*axis[0]
-        omega[1] = omega_d[1] + self.kw*sin(alpha)*axis[1]
-        omega[2] = omega_d[2] + self.kw*sin(alpha)*axis[2]
-
-        # print ("omega:   [%f, %f, %f]" % (omega[0],omega[1],omega[2]))
-
-        self.omega = [omega[0], omega[1], omega[2]]
-        # self.omega = [0,0,0]
-
-
-        if(self.tau<0):
-            a = 1/0.00000000000000001
-
-
-        #end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def get_joy_vel(self) -> tuple:
+        return self.vel_x, self.vel_y, self.vel_z
 
 
 
@@ -320,23 +193,13 @@ class quadrobot_class():
         z_b = [R[0][2], R[1][2], R[2][2]];
         z_hat = [0, 0, 1];
 
+
+
+        Vx, Vy, Vz = self.get_joy_vel()
+        f = [Vx, Vy, Vz]
         
 
-
-
-
-        Vx, Vy, Vz, flag = self.vec_field_obj.compute_field_at_p(pos)
-        f = [Vx, Vy, Vz]
-
-        pos_M = [pos[0]+vel[0]*delta_t, pos[1]+vel[1]*delta_t, pos[2]+vel[2]*delta_t]
-        pos_m = [pos[0]-vel[0]*delta_t, pos[1]-vel[1]*delta_t, pos[2]-vel[2]*delta_t]
-        VxM, VyM, VzM, flag = self.vec_field_obj.compute_field_at_p(pos_M)
-        Vxm, Vym, Vzm, flag = self.vec_field_obj.compute_field_at_p(pos_m)
-
         psi_r = atan2(Vy,Vx)
-        psi_r_M = atan2(VyM,VxM)
-        psi_r_m = atan2(Vym,Vxm)
-
         # psi_r = 0
         # psi_r_M = 0
         # psi_r_m = 0
@@ -358,36 +221,36 @@ class quadrobot_class():
         Re = np.matrix(R).transpose()*np.matrix(Rr);
         Re = Re.tolist()
 
-        # Compute the time derivative of Rr
-        ####################
-        tau_r = self.m*self.g
+        # # Compute the time derivative of Rr
+        # ####################
+        # tau_r = self.m*self.g
 
-        pos_M = [pos[0] + vel[0]*delta_t, pos[1] + vel[1]*delta_t, pos[2] + vel[2]*delta_t]
-        vel_M = [0,0,0]
-        vel_M[0] = vel[0] + (z_b[0]*tau_r/self.m - self.g*z_hat[0])*delta_t
-        vel_M[1] = vel[1] + (z_b[1]*tau_r/self.m - self.g*z_hat[1])*delta_t
-        vel_M[2] = vel[2] + (z_b[2]*tau_r/self.m - self.g*z_hat[2])*delta_t
-        a_r_M = self.get_acc_ref(pos_M,vel_M);
-        Rr_M =  self.get_orientation_ref(a_r_M, psi_r_M);
+        # pos_M = [pos[0] + vel[0]*delta_t, pos[1] + vel[1]*delta_t, pos[2] + vel[2]*delta_t]
+        # vel_M = [0,0,0]
+        # vel_M[0] = vel[0] + (z_b[0]*tau_r/self.m - self.g*z_hat[0])*delta_t
+        # vel_M[1] = vel[1] + (z_b[1]*tau_r/self.m - self.g*z_hat[1])*delta_t
+        # vel_M[2] = vel[2] + (z_b[2]*tau_r/self.m - self.g*z_hat[2])*delta_t
+        # a_r_M = self.get_acc_ref(pos_M,vel_M);
+        # Rr_M =  self.get_orientation_ref(a_r_M, psi_r_M);
 
-        pos_m = [pos[0] - vel[0]*delta_t, pos[1] - vel[1]*delta_t, pos[2] - vel[2]*delta_t]
-        vel_m = [0,0,0]
-        vel_m[0] = vel[0] - (z_b[0]*tau_r/self.m - self.g*z_hat[0])*delta_t
-        vel_m[1] = vel[1] - (z_b[1]*tau_r/self.m - self.g*z_hat[1])*delta_t
-        vel_m[2] = vel[2] - (z_b[2]*tau_r/self.m - self.g*z_hat[2])*delta_t
-        a_r_m = self.get_acc_ref(pos_m,vel_m);
-        Rr_m =  self.get_orientation_ref(a_r_m, psi_r_m);
+        # pos_m = [pos[0] - vel[0]*delta_t, pos[1] - vel[1]*delta_t, pos[2] - vel[2]*delta_t]
+        # vel_m = [0,0,0]
+        # vel_m[0] = vel[0] - (z_b[0]*tau_r/self.m - self.g*z_hat[0])*delta_t
+        # vel_m[1] = vel[1] - (z_b[1]*tau_r/self.m - self.g*z_hat[1])*delta_t
+        # vel_m[2] = vel[2] - (z_b[2]*tau_r/self.m - self.g*z_hat[2])*delta_t
+        # a_r_m = self.get_acc_ref(pos_m,vel_m);
+        # Rr_m =  self.get_orientation_ref(a_r_m, psi_r_m);
 
-        Rr_dot = ((np.matrix(Rr_M)-np.matrix(Rr_m))/(2*delta_t)).tolist()
+        # Rr_dot = ((np.matrix(Rr_M)-np.matrix(Rr_m))/(2*delta_t)).tolist()
 
-        S_w = np.matrix(R).transpose()*np.matrix(Rr_dot)
-        S_w = S_w*(np.matrix(Re).transpose())
-        S_w = S_w.tolist()
-        ####################
+        # S_w = np.matrix(R).transpose()*np.matrix(Rr_dot)
+        # S_w = S_w*(np.matrix(Re).transpose())
+        # S_w = S_w.tolist()
+        # ####################
 
-        omega_d = [S_w[2][1]-S_w[1][2], S_w[0][2]-S_w[2][0], S_w[1][0]-S_w[0][1]]
-        omega_d = [omega_d[0]/2.0, omega_d[1]/2.0, omega_d[2]/2.0]
-        # print ("omega_d: [%f, %f, %f]" % (omega_d[0],omega_d[1],omega_d[2]))
+        # omega_d = [S_w[2][1]-S_w[1][2], S_w[0][2]-S_w[2][0], S_w[1][0]-S_w[0][1]]
+        # omega_d = [omega_d[0]/2.0, omega_d[1]/2.0, omega_d[2]/2.0]
+        # # print ("omega_d: [%f, %f, %f]" % (omega_d[0],omega_d[1],omega_d[2]))
         omega_d = [0,0,0]
 
 
@@ -433,7 +296,7 @@ class quadrobot_class():
         
         # print("state: ")
         # print(state)
-        self.vec_field_obj.set_pos([state[0], state[1], state[2]])
+        # self.vec_field_obj.set_pos([state[0], state[1], state[2]])
 
 
     def set_pos(self, pos):
